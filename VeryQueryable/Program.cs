@@ -37,12 +37,11 @@ namespace VeryQueryable
                     if (databases.TryGetValue(db, out var conn))
                     { 
                         var command = conn.CreateCommand();
-                        command.CommandText = $"select * from '{table}'";
+                        command.CommandText = $"SELECT * FROM '{table}'";
 
                         var queryKeyList = context.Request.Query.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
-                        if (queryKeyList.Any()) command.CommandText += " where " + string.Join(" and ", queryKeyList);
+                        if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
 
-                        command.Parameters.AddWithValue("$table", table);
                         foreach (var item in context.Request.Query)
                             command.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
 
