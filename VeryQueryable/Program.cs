@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
 
@@ -20,8 +22,12 @@ namespace VeryQueryable
             connection.Open();
             databases.Add("test", connection);
 
-            app.MapGet("/{db}/{table}", (HttpContext context) =>
+            app.Map("/{db}/{table}", (HttpContext context) =>
             {
+                context.Response.ContentType = "application/json";
+                if (context.Request.Method.ToUpper() != "GET")
+                    return JsonSerializer.Serialize(new
+                        {error = "1", error_description = "Unsupported request mode, please GET"});
                 try
                 {
                     var list = new List<Dictionary<string, string>>();
