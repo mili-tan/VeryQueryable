@@ -8,7 +8,7 @@ namespace VeryQueryable
     public static class Program
     {
         public static Dictionary<string, SqliteConnection> Databases = new();
-        public static List<string> Paths = new();
+        public static List<string> DynamicPaths = new ();
 
         public static void Main(string[] args)
         {
@@ -23,14 +23,18 @@ namespace VeryQueryable
             connection.Open();
 
             Databases.Add("test", connection);
-            Paths.Add("/{db}/{table}");
+            DynamicPaths.Add("/{db}/{table}");
+            DynamicPaths.Add("/{db}/test/{table}");
 
-            app.Map("/{db}/{table}", (HttpContext context) =>
+            foreach (var path in DynamicPaths)
             {
-                var table = context.GetRouteValue("table")?.ToString() ?? "default";
-                var db = context.GetRouteValue("db")?.ToString() ?? "default";
-                return context.DoQuery(db, table);
-            });
+                app.Map(path, (HttpContext context) =>
+                {
+                    var table = context.GetRouteValue("table")?.ToString() ?? "default";
+                    var db = context.GetRouteValue("db")?.ToString() ?? "default";
+                    return context.DoQuery(db, table);
+                });
+            }
 
             app.Run();
         }
