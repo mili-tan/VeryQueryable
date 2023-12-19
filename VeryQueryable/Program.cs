@@ -5,8 +5,11 @@ using System.Text.Json;
 
 namespace VeryQueryable
 {
-    public class Program
+    public static class Program
     {
+        public static Dictionary<string, SqliteConnection> Databases = new();
+        public static List<string> Paths = new();
+
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -16,67 +19,71 @@ namespace VeryQueryable
             app.UseHttpsRedirection();
             app.UseAuthorization();
 
-            var databases = new Dictionary<string, SqliteConnection>();
-
             var connection = new SqliteConnection("Data Source=test.db");
             connection.Open();
-            databases.Add("test", connection);
+
+            Databases.Add("test", connection);
+            Paths.Add("/{db}/{table}");
 
             app.Map("/{db}/{table}", (HttpContext context) =>
             {
                 var table = context.GetRouteValue("table")?.ToString() ?? "default";
                 var db = context.GetRouteValue("db")?.ToString() ?? "default";
+                return context.DoQuery(db, table);
+            });
 
+            app.Run();
+        }
+
+        public static string DoQuery(this HttpContext context,string db,string table)
+        {
+            try
+            {
                 context.Response.ContentType = "application/json";
+
                 if (context.Request.Method.ToUpper() != "GET")
                     return JsonSerializer.Serialize(new
-                        {error = "1", error_description = "Unsupported request mode, please GET"});
-                try
-                {
-                    var list = new List<Dictionary<string, string>>();
-                    if (databases.TryGetValue(db, out var conn))
-                    { 
-                        var command = conn.CreateCommand();
-                        command.CommandText = $"SELECT * FROM '{table}'";
-
-                        var queryKeyList = context.Request.Query.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
-                        if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
-
-                        foreach (var item in context.Request.Query)
-                            command.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
-
-                        using (var reader = command.ExecuteReader())
-                            while (reader.Read())
-                                list.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(i => reader.GetName(i),
-                                    i => reader.GetValue(i).ToString())!);
-
-                        return JsonSerializer.Serialize(new
-                        {
-                            error = "0",
-                            error_description = "OK",
-                            count = list.Count,
-                            data = list
-                        });
-                    }
-
+                        { error = "1", error_description = "Unsupported request mode, please GET" });
+                if (!Databases.TryGetValue(db, out var conn))
                     return JsonSerializer.Serialize(new
                     {
                         error = "1",
                         error_description = "Database not found"
                     });
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                    return JsonSerializer.Serialize(new
-                    {
-                        error = "1",
-                        error_description = e.Message
-                    });
-                }
-            });
 
-            app.Run();
+                var list = new List<Dictionary<string, string>>();
+                var command = conn.CreateCommand();
+                command.CommandText = $"SELECT * FROM '{table}'";
+
+                var queryKeyList = context.Request.Query.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
+                if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
+
+                foreach (var item in context.Request.Query)
+                    command.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
+
+                using (var reader = command.ExecuteReader())
+                    while (reader.Read())
+                        list.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(i => reader.GetName(i),
+                            i => reader.GetValue(i).ToString())!);
+
+                return JsonSerializer.Serialize(new
+                {
+                    error = "0",
+                    error_description = "OK",
+                    count = list.Count,
+                    data = list
+                });
+
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return JsonSerializer.Serialize(new
+                {
+                    error = "1",
+                    error_description = e.Message
+                });
+            }
         }
     }
 }
