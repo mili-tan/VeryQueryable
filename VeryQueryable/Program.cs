@@ -24,6 +24,9 @@ namespace VeryQueryable
 
             app.Map("/{db}/{table}", (HttpContext context) =>
             {
+                var table = context.GetRouteValue("table")?.ToString() ?? "default";
+                var db = context.GetRouteValue("db")?.ToString() ?? "default";
+
                 context.Response.ContentType = "application/json";
                 if (context.Request.Method.ToUpper() != "GET")
                     return JsonSerializer.Serialize(new
@@ -31,9 +34,6 @@ namespace VeryQueryable
                 try
                 {
                     var list = new List<Dictionary<string, string>>();
-                    var table = context.GetRouteValue("table")?.ToString() ?? "default";
-                    var db = context.GetRouteValue("db")?.ToString() ?? "default";
-
                     if (databases.TryGetValue(db, out var conn))
                     { 
                         var command = conn.CreateCommand();
@@ -58,14 +58,12 @@ namespace VeryQueryable
                             data = list
                         });
                     }
-                    else
+
+                    return JsonSerializer.Serialize(new
                     {
-                        return JsonSerializer.Serialize(new
-                        {
-                            error = "1",
-                            error_description = "Database not found"
-                        });
-                    }
+                        error = "1",
+                        error_description = "Database not found"
+                    });
                 }
                 catch (Exception e)
                 {
