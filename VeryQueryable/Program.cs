@@ -19,6 +19,15 @@ namespace VeryQueryable
             app.UseHttpsRedirection();
             app.UseAuthorization();
 
+            app.Use(async (context, next) =>
+            {
+                context.Response.Headers.Add("Access-Control-Allow-Origin", "*");
+                context.Response.Headers.Add("Access-Control-Allow-Methods", "*");
+                context.Response.Headers.Add("Access-Control-Allow-Headers", "*");
+                context.Response.Headers.Add("Access-Control-Allow-Credentials", "*");
+                await next(context);
+            });
+
             foreach (var i in File.ReadAllLines("db.txt"))
             {
                 if (string.IsNullOrWhiteSpace(i)) continue;
