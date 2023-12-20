@@ -19,12 +19,22 @@ namespace VeryQueryable
             app.UseHttpsRedirection();
             app.UseAuthorization();
 
-            var connection = new SqliteConnection("Data Source=test.db");
-            connection.Open();
+            foreach (var i in File.ReadAllLines("db.txt"))
+            {
+                if (string.IsNullOrWhiteSpace(i)) continue;
+                var split = i.Split(":");
+                var connection = new SqliteConnection(split.Last());
+                connection.Open();
+                Databases.Add(split.First(), connection);
+            }
 
-            Databases.Add("test", connection);
+            foreach (var i in File.ReadAllLines("path.txt"))
+            {
+                if (string.IsNullOrWhiteSpace(i)) continue;
+                DynamicPaths.Add(i);
+            }
+
             DynamicPaths.Add("/{db}/{table}");
-            DynamicPaths.Add("/{db}/test/{table}");
 
             foreach (var path in DynamicPaths)
             {
