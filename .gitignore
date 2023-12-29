@@ -362,3 +362,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /VeryQueryable/test.db
+/VeryQueryable/db.txt
+/VeryQueryable/path.txt
+/VeryQueryable/db.txt
+/VeryQueryable/path.txt
