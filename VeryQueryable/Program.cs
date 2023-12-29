@@ -8,7 +8,8 @@ namespace VeryQueryable
     public static class Program
     {
         public static Dictionary<string, SqliteConnection> Databases = new();
-        public static List<string> DynamicPaths = new ();
+        public static List<(string path, string db, string table)> StaticPaths = new();
+        public static List<string> DynamicPaths = new();
 
         public static void Main(string[] args)
         {
@@ -40,10 +41,17 @@ namespace VeryQueryable
             foreach (var i in File.ReadAllLines("path.txt"))
             {
                 if (string.IsNullOrWhiteSpace(i)) continue;
-                DynamicPaths.Add(i);
+                if (i.Contains(":"))
+                {
+                    var split = i.Split(":");
+                    StaticPaths.Add(new(split[0], split[1], split[2]));
+                }
+                else
+                    DynamicPaths.Add(i);
             }
 
-            DynamicPaths.Add("/{db}/{table}");
+            foreach (var item in StaticPaths)
+                app.Map(item.path, (HttpContext context) => context.DoQuery(item.db, item.table));
 
             foreach (var path in DynamicPaths)
             {
@@ -58,7 +66,7 @@ namespace VeryQueryable
             app.Run();
         }
 
-        public static string DoQuery(this HttpContext context,string db,string table)
+        public static string DoQuery(this HttpContext context, string db, string table)
         {
             try
             {
@@ -66,7 +74,7 @@ namespace VeryQueryable
 
                 if (context.Request.Method.ToUpper() != "GET")
                     return JsonSerializer.Serialize(new
-                        { error = "1", error_description = "Unsupported request mode, please GET" });
+                        {error = "1", error_description = "Unsupported request mode, please GET"});
                 if (!Databases.TryGetValue(db, out var conn))
                     return JsonSerializer.Serialize(new
                     {
@@ -76,7 +84,7 @@ namespace VeryQueryable
 
                 var list = new List<Dictionary<string, string>>();
                 var command = conn.CreateCommand();
-                command.CommandText = $"SELECT * FROM '{table}'";
+                command.CommandText = $"SELECT * FROM {table}";
 
                 var queryKeyList = context.Request.Query.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
                 if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
