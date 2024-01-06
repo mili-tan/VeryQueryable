@@ -16,9 +16,18 @@ namespace VeryQueryable
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddAuthorization();
 
-            foreach (var item in builder.Configuration.GetSection("VeryQuery").GetSection("DynamicPaths").Get<string[]>()!)
+            try
             {
-                DynamicPaths.Add(item);
+                var config = builder.Configuration.GetSection("VeryQuery");
+                foreach (var item in config.GetSection("DynamicPaths").Get<string[]>()!) DynamicPaths.Add(item);
+                foreach (var item in config.GetSection("StaticPaths").GetChildren())
+                    StaticPaths.Add(new ValueTuple<string, string, string>(item.GetValue<string>("Path")!,
+                        item.GetValue<string>("Database")!,
+                        item.GetValue<string>("Table")!));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
 
             var app = builder.Build();
