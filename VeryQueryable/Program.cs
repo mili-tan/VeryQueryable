@@ -16,6 +16,11 @@ namespace VeryQueryable
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddAuthorization();
 
+            foreach (var item in builder.Configuration.GetSection("VeryQuery").GetSection("DynamicPaths").Get<string[]>()!)
+            {
+                DynamicPaths.Add(item);
+            }
+
             var app = builder.Build();
             app.UseHttpsRedirection();
             app.UseAuthorization();
