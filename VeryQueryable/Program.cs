@@ -103,6 +103,12 @@ namespace VeryQueryable
                         error = "1",
                         error_description = "Database not found"
                     });
+                if (context.Request.Query.Count == 0)
+                    return JsonSerializer.Serialize(new
+                    {
+                        error = "1",
+                        error_description = "No valid query"
+                    });
 
                 var list = new List<Dictionary<string, string>>();
                 var command = conn.CreateCommand();
