@@ -47,6 +47,7 @@ namespace VeryQueryable
                 context.Response.Headers?.Add("Access-Control-Allow-Methods", "*");
                 context.Response.Headers?.Add("Access-Control-Allow-Headers", "*");
                 context.Response.Headers?.Add("Access-Control-Allow-Credentials", "*");
+                context.Response.Headers?.Add("X-Powered-By", "VeryQueryable/0.1");
                 await next(context);
             });
 
