@@ -24,6 +24,13 @@ namespace VeryQueryable
                     StaticPaths.Add(new ValueTuple<string, string, string>(item.GetValue<string>("Path")!,
                         item.GetValue<string>("Database")!,
                         item.GetValue<string>("Table")!));
+
+                foreach (var item in config.GetSection("Databases").GetChildren())
+                {
+                    var connection = new SqliteConnection(item.GetValue<string>("Connection")!);
+                    connection.Open();
+                    Databases.TryAdd(item.GetValue<string>("Name")!, connection);
+                }
             }
             catch (Exception e)
             {
@@ -49,7 +56,7 @@ namespace VeryQueryable
                 var split = i.Split(":");
                 var connection = new SqliteConnection(split.Last());
                 connection.Open();
-                Databases.Add(split.First(), connection);
+                Databases.TryAdd(split.First(), connection);
             }
 
             foreach (var i in File.ReadAllLines("path.txt"))
