@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace VeryQueryable
 {
@@ -10,6 +11,8 @@ namespace VeryQueryable
         public static Dictionary<string, SqliteConnection> Databases = new();
         public static List<(string path, string db, string table)> StaticPaths = new();
         public static List<string> DynamicPaths = new();
+        public static bool AllowAnyQuery = true;
+
 
         public static void Main(string[] args)
         {
@@ -31,6 +34,8 @@ namespace VeryQueryable
                     connection.Open();
                     Databases.TryAdd(item.GetValue<string>("Name")!, connection);
                 }
+
+                AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
             }
             catch (Exception e)
             {
@@ -103,7 +108,7 @@ namespace VeryQueryable
                         error = "1",
                         error_description = "Database not found"
                     });
-                if (context.Request.Query.Count == 0)
+                if (context.Request.Query.Count == 0 && !AllowAnyQuery)
                     return JsonSerializer.Serialize(new
                     {
                         error = "1",
