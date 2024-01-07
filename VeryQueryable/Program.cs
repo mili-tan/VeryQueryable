@@ -12,6 +12,7 @@ namespace VeryQueryable
         public static List<(string path, string db, string table)> StaticPaths = new();
         public static List<string> DynamicPaths = new();
         public static bool AllowAnyQuery = true;
+        public static bool AllowAnyCORS = true;
 
 
         public static void Main(string[] args)
@@ -36,6 +37,7 @@ namespace VeryQueryable
                 }
 
                 AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
+                AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
             }
             catch (Exception e)
             {
@@ -48,10 +50,13 @@ namespace VeryQueryable
 
             app.Use(async (context, next) =>
             {
-                context.Response.Headers?.Add("Access-Control-Allow-Origin", "*");
-                context.Response.Headers?.Add("Access-Control-Allow-Methods", "*");
-                context.Response.Headers?.Add("Access-Control-Allow-Headers", "*");
-                context.Response.Headers?.Add("Access-Control-Allow-Credentials", "*");
+                if (AllowAnyCORS)
+                {
+                    context.Response.Headers?.Add("Access-Control-Allow-Origin", "*");
+                    context.Response.Headers?.Add("Access-Control-Allow-Methods", "*");
+                    context.Response.Headers?.Add("Access-Control-Allow-Headers", "*");
+                    context.Response.Headers?.Add("Access-Control-Allow-Credentials", "*");
+                }
                 context.Response.Headers?.Add("X-Powered-By", "VeryQueryable/0.1");
                 await next(context);
             });
