@@ -1,8 +1,5 @@
-using System.Net;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace VeryQueryable
 {
@@ -22,7 +19,7 @@ namespace VeryQueryable
 
             try
             {
-                var config = builder.Configuration.GetSection("VeryQuery");
+                var config = builder.Configuration.GetSection("VeryQueryable");
                 foreach (var item in config.GetSection("DynamicPaths").Get<string[]>()!) DynamicPaths.Add(item);
                 foreach (var item in config.GetSection("StaticPaths").GetChildren())
                     StaticPaths.Add(new ValueTuple<string, string, string>(item.GetValue<string>("Path")!,
