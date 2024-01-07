@@ -11,7 +11,6 @@ namespace VeryQueryable
         public static bool AllowAnyQuery = true;
         public static bool AllowAnyCORS = true;
 
-
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +34,29 @@ namespace VeryQueryable
 
                 AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
                 AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
+
+
+                if (File.Exists("db.txt"))
+                    foreach (var i in File.ReadAllLines("db.txt"))
+                    {
+                        if (string.IsNullOrWhiteSpace(i)) continue;
+                        var split = i.Split(":");
+                        var connection = new SqliteConnection(split.Last());
+                        connection.Open();
+                        Databases.TryAdd(split.First(), connection);
+                    }
+
+                if (File.Exists("path.txt"))
+                    foreach (var i in File.ReadAllLines("path.txt"))
+                    {
+                        if (string.IsNullOrWhiteSpace(i)) continue;
+                        if (i.Contains(":"))
+                        {
+                            var split = i.Split(":");
+                            StaticPaths.Add(new ValueTuple<string, string, string>(split[0], split[1], split[2]));
+                        }
+                        else DynamicPaths.Add(i);
+                    }
             }
             catch (Exception e)
             {
@@ -44,7 +66,6 @@ namespace VeryQueryable
             var app = builder.Build();
             app.UseHttpsRedirection();
             app.UseAuthorization();
-
             app.Use(async (context, next) =>
             {
                 if (AllowAnyCORS)
@@ -54,34 +75,13 @@ namespace VeryQueryable
                     context.Response.Headers?.Add("Access-Control-Allow-Headers", "*");
                     context.Response.Headers?.Add("Access-Control-Allow-Credentials", "*");
                 }
+
                 context.Response.Headers?.Add("X-Powered-By", "VeryQueryable/0.1");
                 await next(context);
             });
 
-            foreach (var i in File.ReadAllLines("db.txt"))
-            {
-                if (string.IsNullOrWhiteSpace(i)) continue;
-                var split = i.Split(":");
-                var connection = new SqliteConnection(split.Last());
-                connection.Open();
-                Databases.TryAdd(split.First(), connection);
-            }
-
-            foreach (var i in File.ReadAllLines("path.txt"))
-            {
-                if (string.IsNullOrWhiteSpace(i)) continue;
-                if (i.Contains(":"))
-                {
-                    var split = i.Split(":");
-                    StaticPaths.Add(new(split[0], split[1], split[2]));
-                }
-                else
-                    DynamicPaths.Add(i);
-            }
-
-            foreach (var item in StaticPaths)
-                app.Map(item.path, (HttpContext context) => context.DoQuery(item.db, item.table));
-
+            foreach (var (path, db, table) in StaticPaths)
+                app.Map(path, (HttpContext context) => context.DoQuery(db, table));
             foreach (var path in DynamicPaths)
             {
                 app.Map(path, (HttpContext context) =>
