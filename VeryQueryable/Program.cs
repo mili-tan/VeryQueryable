@@ -103,18 +103,18 @@ namespace VeryQueryable
 
                 if (context.Request.Method.ToUpper() != "GET")
                     return JsonSerializer.Serialize(new
-                        {error = "1", error_description = "Unsupported request mode, please GET"});
+                        {status = -1, description = "Unsupported request mode, please GET"});
                 if (!Databases.TryGetValue(db, out var conn))
                     return JsonSerializer.Serialize(new
                     {
-                        error = "1",
-                        error_description = "Database not found"
+                        status = -1,
+                        description = "Database not found"
                     });
                 if (context.Request.Query.Count == 0 && !AllowAnyQuery)
                     return JsonSerializer.Serialize(new
                     {
-                        error = "1",
-                        error_description = "No valid query"
+                        status = 0,
+                        description = "No valid query"
                     });
 
                 var list = new List<Dictionary<string, string>>();
@@ -134,19 +134,18 @@ namespace VeryQueryable
 
                 return JsonSerializer.Serialize(new
                 {
-                    error = "0",
-                    error_description = "OK",
+                    status = 1,
+                    description = "OK",
                     count = list.Count,
                     data = list
                 });
-
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
                 return JsonSerializer.Serialize(new
                 {
-                    error = "1",
+                    error = 0,
                     error_description = e.Message
                 });
             }
