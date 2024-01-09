@@ -21,24 +21,32 @@ namespace VeryQueryable
             try
             {
                 var config = builder.Configuration.GetSection("VeryQueryable");
-                foreach (var item in config.GetSection("DynamicPaths").Get<string[]>()!) DynamicPaths.Add(item);
-                foreach (var item in config.GetSection("StaticPaths").GetChildren())
-                    StaticPaths.Add(new ValueTuple<string, string, string>(item.GetValue<string>("Path")!,
-                        item.GetValue<string>("Database")!,
-                        item.GetValue<string>("Table")!));
+                if (!builder.Configuration.GetSection("VeryQueryable").Exists()) return;
+                
+                if (config.GetSection("DynamicPaths").Exists()) 
+                    foreach (var item in config.GetSection("DynamicPaths").Get<string[]>()!) DynamicPaths.Add(item);
+                if (config.GetSection("StaticPaths").Exists())
+                    foreach (var item in config.GetSection("StaticPaths").GetChildren())
+                        StaticPaths.Add(new ValueTuple<string, string, string>(item.GetValue<string>("Path")!,
+                            item.GetValue<string>("Database")!,
+                            item.GetValue<string>("Table")!));
 
-                foreach (var item in config.GetSection("Databases").GetChildren())
-                {
-                    var connection = new SqliteConnection(item.GetValue<string>("Connection")!);
-                    connection.Open();
-                    Databases.TryAdd(item.GetValue<string>("Name")!, connection);
-                }
+                if (config.GetSection("Databases").Exists())
+                    foreach (var item in config.GetSection("Databases").GetChildren())
+                    {
+                        var connection = new SqliteConnection(item.GetValue<string>("Connection")!);
+                        connection.Open();
+                        Databases.TryAdd(item.GetValue<string>("Name")!, connection);
+                    }
 
-                AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
-                AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
+                if (config.GetSection("AllowAnyQuery").Exists())
+                    AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
+                if (config.GetSection("AllowAnyCORS").Exists())
+                    AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
 
-                foreach (var item in config.GetSection("Herders").GetChildren())
-                    HeadersDictionary.Add(item.Key, item.Value ?? "");
+                if (config.GetSection("Herders").Exists())
+                    foreach (var item in config.GetSection("Herders").GetChildren())
+                        HeadersDictionary.Add(item.Key, item.Value ?? "");
 
                 if (File.Exists("db.txt"))
                     foreach (var i in File.ReadAllLines("db.txt"))
