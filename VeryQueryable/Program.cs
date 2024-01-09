@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace VeryQueryable
@@ -6,6 +7,7 @@ namespace VeryQueryable
     public static class Program
     {
         public static Dictionary<string, SqliteConnection> Databases = new();
+        public static Dictionary<string, string> HeadersDictionary = new();
         public static List<(string path, string db, string table)> StaticPaths = new();
         public static List<string> DynamicPaths = new();
         public static bool AllowAnyQuery = true;
@@ -35,6 +37,8 @@ namespace VeryQueryable
                 AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
                 AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
 
+                foreach (var item in config.GetSection("Herders").GetChildren())
+                    HeadersDictionary.Add(item.Key, item.Value ?? "");
 
                 if (File.Exists("db.txt"))
                     foreach (var i in File.ReadAllLines("db.txt"))
@@ -77,6 +81,10 @@ namespace VeryQueryable
                 }
 
                 context.Response.Headers?.Add("X-Powered-By", "VeryQueryable/0.1");
+
+                foreach (var item in HeadersDictionary)
+                    context.Response.Headers.TryAdd(item.Key, item.Value);
+
                 await next(context);
             });
 
