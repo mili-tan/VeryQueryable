@@ -366,3 +366,4 @@ FodyWeavers.xsd
 /VeryQueryable/path.txt
 /VeryQueryable/db.txt
 /VeryQueryable/path.txt
+/VeryQueryable/*.db
