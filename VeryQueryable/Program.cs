@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
+#pragma warning disable ASP0019
 
 namespace VeryQueryable
 {
@@ -81,13 +82,13 @@ namespace VeryQueryable
             {
                 if (AllowAnyCORS)
                 {
-                    context.Response.Headers?.Add("Access-Control-Allow-Origin", "*");
-                    context.Response.Headers?.Add("Access-Control-Allow-Methods", "*");
-                    context.Response.Headers?.Add("Access-Control-Allow-Headers", "*");
-                    context.Response.Headers?.Add("Access-Control-Allow-Credentials", "*");
+                    context.Response.Headers.Add("Access-Control-Allow-Origin", "*");
+                    context.Response.Headers.Add("Access-Control-Allow-Methods", "*");
+                    context.Response.Headers.Add("Access-Control-Allow-Headers", "*");
+                    context.Response.Headers.Add("Access-Control-Allow-Credentials", "*");
                 }
 
-                context.Response.Headers?.Add("X-Powered-By", "VeryQueryable/0.1");
+                context.Response.Headers.Add("X-Powered-By", "VeryQueryable/0.1");
 
                 foreach (var item in HeadersDictionary)
                     context.Response.Headers.TryAdd(item.Key, item.Value);
