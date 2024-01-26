@@ -111,11 +111,13 @@ namespace VeryQueryable
             app.Run();
         }
 
-        public static string DoQuery(this HttpContext context, string db, string table)
+        public static string DoQuery(this HttpContext context, string db, string table,
+            string[]? requiredParameters = null, string[]? allowedParameters = null, string[]? bannedParameters = null)
         {
             try
             {
                 context.Response.ContentType = "application/json";
+                var querys = context.Request.Query.ToDictionary();
 
                 if (context.Request.Method.ToUpper() != "GET")
                     return JsonSerializer.Serialize(new
@@ -126,7 +128,22 @@ namespace VeryQueryable
                         status = -1,
                         description = "Database not found"
                     });
-                if (context.Request.Query.Count == 0 && !AllowAnyQuery)
+                if (requiredParameters != null &&
+                    requiredParameters.Any(i => !querys.Keys.Contains(i)))
+                    return JsonSerializer.Serialize(new
+                    {
+                        status = 0,
+                        description = "No valid query"
+                    });
+                if (bannedParameters != null &&
+                    bannedParameters.Length != 0)
+                    foreach (var item in querys.Where(item => bannedParameters.Contains(item.Key)))
+                        querys.Remove(item.Key);
+                if (allowedParameters != null &&
+                    allowedParameters.Length != 0)
+                    foreach (var item in querys.Where(item => !allowedParameters.Contains(item.Key)))
+                        querys.Remove(item.Key);
+                if (querys.Count == 0 && !AllowAnyQuery)
                     return JsonSerializer.Serialize(new
                     {
                         status = 0,
@@ -137,10 +154,10 @@ namespace VeryQueryable
                 var command = conn.CreateCommand();
                 command.CommandText = $"SELECT * FROM {table}";
 
-                var queryKeyList = context.Request.Query.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
+                var queryKeyList = querys.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
                 if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
 
-                foreach (var item in context.Request.Query)
+                foreach (var item in querys)
                     command.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
 
                 using (var reader = command.ExecuteReader())
