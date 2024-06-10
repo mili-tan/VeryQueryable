@@ -165,6 +165,14 @@ namespace VeryQueryable
                         list.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(i => reader.GetName(i),
                             i => reader.GetValue(i).ToString())!);
 
+                foreach (var item in list)
+                {
+                    foreach (var banned in bannedParameters)
+                    {
+                        item.Remove(banned);
+                    }
+                }
+
                 return JsonSerializer.Serialize(new
                 {
                     status = 1,
