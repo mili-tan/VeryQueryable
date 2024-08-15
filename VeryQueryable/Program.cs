@@ -112,7 +112,7 @@ namespace VeryQueryable
         }
 
         public static string DoQuery(this HttpContext context, string db, string table,
-            string[]? requiredParameters = null, string[]? allowedParameters = null, string[]? bannedParameters = null)
+            string[]? requiredParameters = null, string[]? allowedParameters = null, string[]? bannedResults = null, string[]? bannedQuerys = null)
         {
             try
             {
@@ -135,9 +135,8 @@ namespace VeryQueryable
                         status = 0,
                         description = "No valid query"
                     });
-                if (bannedParameters != null &&
-                    bannedParameters.Length != 0)
-                    foreach (var item in querys.Where(item => bannedParameters.Contains(item.Key)))
+                if (bannedQuerys != null && bannedQuerys.Length != 0)
+                    foreach (var item in querys.Where(item => bannedQuerys.Contains(item.Key)))
                         querys.Remove(item.Key);
                 if (allowedParameters != null &&
                     allowedParameters.Length != 0)
@@ -165,13 +164,14 @@ namespace VeryQueryable
                         list.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(i => reader.GetName(i),
                             i => reader.GetValue(i).ToString())!);
 
-                foreach (var item in list)
-                {
-                    foreach (var banned in bannedParameters)
+                if (bannedResults != null && bannedResults.Length != 0)
+                    foreach (var item in list)
                     {
-                        item.Remove(banned);
+                        foreach (var banned in bannedResults)
+                        {
+                            item.Remove(banned);
+                        }
                     }
-                }
 
                 return JsonSerializer.Serialize(new
                 {
