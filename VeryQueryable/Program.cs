@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 #pragma warning disable ASP0019
 
 namespace VeryQueryable
@@ -112,7 +113,7 @@ namespace VeryQueryable
         }
 
         public static string DoQuery(this HttpContext context, string db, string table,
-            string[]? requiredParameters = null, string[]? allowedParameters = null, string[]? bannedResults = null, string[]? bannedQuerys = null)
+            string[]? requiredQuerys = null, string[]? allowedQuerys = null, string[]? bannedResults = null, string[]? bannedQuerys = null)
         {
             try
             {
@@ -128,8 +129,7 @@ namespace VeryQueryable
                         status = -1,
                         description = "Database not found"
                     });
-                if (requiredParameters != null &&
-                    requiredParameters.Any(i => !querys.Keys.Contains(i)))
+                if (requiredQuerys != null && requiredQuerys.Any(i => !querys.Keys.Contains(i)))
                     return JsonSerializer.Serialize(new
                     {
                         status = 0,
@@ -138,9 +138,8 @@ namespace VeryQueryable
                 if (bannedQuerys != null && bannedQuerys.Length != 0)
                     foreach (var item in querys.Where(item => bannedQuerys.Contains(item.Key)))
                         querys.Remove(item.Key);
-                if (allowedParameters != null &&
-                    allowedParameters.Length != 0)
-                    foreach (var item in querys.Where(item => !allowedParameters.Contains(item.Key)))
+                if (allowedQuerys != null && allowedQuerys.Length != 0)
+                    foreach (var item in querys.Where(item => !allowedQuerys.Contains(item.Key)))
                         querys.Remove(item.Key);
                 if (querys.Count == 0 && !AllowAnyQuery)
                     return JsonSerializer.Serialize(new
@@ -148,10 +147,20 @@ namespace VeryQueryable
                         status = 0,
                         description = "No valid query"
                     });
+                if (querys.Any(item => !IsValidInput(item.Value.ToString()) || !IsValidInput(item.Key)))
+                {
+                    return JsonSerializer.Serialize(new
+                    {
+                        status = 0,
+                        description = "No valid query"
+                    });
+                }
 
                 var list = new List<Dictionary<string, string>>();
                 var command = conn.CreateCommand();
                 command.CommandText = $"SELECT * FROM {table}";
+
+
 
                 var queryKeyList = querys.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
                 if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
@@ -190,6 +199,11 @@ namespace VeryQueryable
                     error_description = e.Message
                 });
             }
+        }
+
+        static bool IsValidInput(string input)
+        {
+            return input.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
         }
     }
 }
