@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 #pragma warning disable ASP0019
 
@@ -122,59 +123,55 @@ namespace VeryQueryable
 
         public static string DoQuery(this HttpContext context, StaticPathEntity entity)
         {
-            return DoQuery(context, entity.Database, entity.Table, entity.OnlyTakeFirst ?? false,
-                entity.RequiredQuerys, entity.AllowedQuerys,
-                entity.BannedResults, entity.BannedQuerys, entity.AllowedResults);
-        }
+            context.Response.ContentType = "application/json";
+            var querys = context.Request.Query.ToDictionary();
+            var keys = entity.KeyNames ?? new KeyNameEntity();
+            var codes = entity.StatusCodes ?? new StatusCodesEntity();
 
-        public static string DoQuery(this HttpContext context, string db, string table, bool onlyTakeFirst = false,
-            string[]? requiredQuerys = null, string[]? allowedQuerys = null, string[]? bannedResults = null,
-            string[]? bannedQuerys = null, string[]? allowedResults = null)
-        {
             try
             {
-                context.Response.ContentType = "application/json";
-                var querys = context.Request.Query.ToDictionary();
-
                 if (context.Request.Method.ToUpper() != "GET")
-                    return JsonSerializer.Serialize(new
-                        {status = -1, description = "Unsupported request mode, please GET"});
-                if (!Databases.TryGetValue(db, out var conn))
-                    return JsonSerializer.Serialize(new
+                    return JsonSerializer.Serialize(new JsonObject()
                     {
-                        status = -1,
-                        description = "Database not found"
+                        {keys.Status, codes.InternalInvalid},
+                        {keys.Description, "Unsupported request mode, please GET"}
                     });
-                if (requiredQuerys != null && requiredQuerys.Any(i => !querys.Keys.Contains(i)))
-                    return JsonSerializer.Serialize(new
+                if (!Databases.TryGetValue(entity.Database, out var conn))
+                    return JsonSerializer.Serialize(new JsonObject()
                     {
-                        status = 0,
-                        description = "Required query is missing"
+                        {keys.Status, codes.InternalInvalid},
+                        {keys.Description, "Database not found"}
                     });
-                if (bannedQuerys != null && bannedQuerys.Length != 0)
-                    foreach (var item in querys.Where(item => bannedQuerys.Contains(item.Key)))
+                if (entity.RequiredQuerys != null && entity.RequiredQuerys.Any(i => !querys.Keys.Contains(i)))
+                    return JsonSerializer.Serialize(new JsonObject()
+                    {
+                        {keys.Status, codes.InputInvalid},
+                        {keys.Description, "Required query is missing"}
+                    });
+                if (entity.BannedQuerys != null && entity.BannedQuerys.Length != 0)
+                    foreach (var item in querys.Where(item => entity.BannedQuerys.Contains(item.Key)))
                         querys.Remove(item.Key);
-                if (allowedQuerys != null && allowedQuerys.Length != 0)
-                    foreach (var item in querys.Where(item => !allowedQuerys.Contains(item.Key)))
+                if (entity.AllowedQuerys != null && entity.AllowedQuerys.Length != 0)
+                    foreach (var item in querys.Where(item => !entity.AllowedQuerys.Contains(item.Key)))
                         querys.Remove(item.Key);
                 if (querys.Count == 0 && !AllowAnyQuery)
-                    return JsonSerializer.Serialize(new
+                    return JsonSerializer.Serialize(new JsonObject()
                     {
-                        status = 0,
-                        description = "No valid query"
+                        {keys.Status, codes.InputInvalid},
+                        {keys.Description, "No valid query"}
                     });
                 if (querys.Any(item => !IsValidInput(item.Value.ToString()) || !IsValidInput(item.Key)))
                 {
-                    return JsonSerializer.Serialize(new
+                    return JsonSerializer.Serialize(new JsonObject()
                     {
-                        status = 0,
-                        description = "Invalid or failure query value"
+                        {keys.Status, codes.InputInvalid},
+                        {keys.Description, "Invalid or failure query value"}
                     });
                 }
 
                 var list = new List<Dictionary<string, string>>();
                 var command = conn.CreateCommand();
-                command.CommandText = $"SELECT * FROM '{table}'";
+                command.CommandText = $"SELECT * FROM '{entity.Table}'";
 
                 var queryKeyList = querys.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
                 if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
@@ -189,43 +186,48 @@ namespace VeryQueryable
                         list.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(i => reader.GetName(i),
                             i => reader.GetValue(i).ToString())!);
 
-                if (onlyTakeFirst && list.Count > 1) list = [list.First()!];
+                if (entity.Takes.HasValue) list = list.Take(entity.Takes.Value).ToList();
 
-                if (bannedResults != null && bannedResults.Length != 0)
+                if (entity.BannedResults != null && entity.BannedResults.Length != 0)
                     foreach (var item in list)
                     {
-                        foreach (var banned in bannedResults)
-                        {
-                            item.Remove(banned);
-                        }
+                        foreach (var banned in entity.BannedResults) item.Remove(banned);
                     }
 
-                if (allowedResults != null && allowedResults.Length != 0)
+                if (entity.AllowedResults != null && entity.AllowedResults.Length != 0)
                     foreach (var item in list)
                     {
-                        foreach (var key in item.Keys.Where(key => !allowedResults.Contains(key)))
-                        {
+                        foreach (var key in item.Keys.Where(key => !entity.AllowedResults.Contains(key)))
                             item.Remove(key);
-                        }
                     }
 
-                return JsonSerializer.Serialize(new
+                return JsonSerializer.Serialize(new JsonObject()
                 {
-                    status = 1,
-                    description = "OK",
-                    count = list.Count,
-                    data = list
+                    {keys.Status, codes.OK},
+                    {keys.Description, "OK"},
+                    {keys.Count, list.Count},
+                    {
+                        keys.Result,
+                        (entity.NotArray ?? false)
+                            ? JsonNode.Parse(JsonSerializer.Serialize(list.First()))
+                            : JsonNode.Parse(JsonSerializer.Serialize(list))
+                    }
                 });
             }
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                return JsonSerializer.Serialize(new
+                return JsonSerializer.Serialize(new JsonObject()
                 {
-                    error = 0,
-                    error_description = AllowShowExceptionMessage ? e.Message : "Internal database error"
+                    {keys.Status, codes.Error},
+                    {keys.Description, AllowShowExceptionMessage ? e.Message : "Internal database error"}
                 });
             }
+        }
+
+        public static string DoQuery(this HttpContext context, string db, string table)
+        {
+            return DoQuery(context, new StaticPathEntity() {Database = db, Table = table});
         }
 
         static bool IsValidInput(string input)
@@ -239,12 +241,31 @@ namespace VeryQueryable
         public string Database { get; set; }
         public string Table { get; set; }
         public string Path { get; set; }
-        public bool? OnlyTakeFirst { get; set; }
+        public int? Takes { get; set; }
+        public bool? NotArray { get; set; }
 
+        public KeyNameEntity? KeyNames { get; set; }
+        public StatusCodesEntity? StatusCodes { get; set; }
         public string[]? RequiredQuerys { get; set; }
         public string[]? AllowedQuerys { get; set; }
         public string[]? BannedQuerys { get; set; }
         public string[]? BannedResults { get; set; }
         public string[]? AllowedResults { get; set; }
+    }
+
+    public class KeyNameEntity
+    {
+        public string Status { get; set; } = "status";
+        public string Description { get; set; } = "description";
+        public string Count { get; set; } = "count";
+        public string Result { get; set; } = "data";
+    }
+
+    public class StatusCodesEntity
+    {
+        public int OK { get; set; } = 1;
+        public int Error { get; set; } = 0;
+        public int InputInvalid { get; set; } = 0;
+        public int InternalInvalid { get; set; } = -1;
     }
 }
