@@ -1,7 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
+
 #pragma warning disable ASP0019
 
 namespace VeryQueryable
@@ -99,9 +98,14 @@ namespace VeryQueryable
             });
 
             foreach (var item in StaticPaths)
+            {
+                Console.WriteLine("StaticPaths:" + item.Path);
                 app.Map(item.Path, (HttpContext context) => context.DoQuery(item));
+            }
+
             foreach (var path in DynamicPaths)
             {
+                Console.WriteLine("DynamicPaths:" + path);
                 app.Map(path, (HttpContext context) =>
                 {
                     var table = context.GetRouteValue("table")?.ToString() ?? "default";
@@ -141,7 +145,7 @@ namespace VeryQueryable
                     return JsonSerializer.Serialize(new
                     {
                         status = 0,
-                        description = "No valid query"
+                        description = "Required query is missing"
                     });
                 if (bannedQuerys != null && bannedQuerys.Length != 0)
                     foreach (var item in querys.Where(item => bannedQuerys.Contains(item.Key)))
@@ -160,13 +164,13 @@ namespace VeryQueryable
                     return JsonSerializer.Serialize(new
                     {
                         status = 0,
-                        description = "No valid query"
+                        description = "Invalid or failure query value"
                     });
                 }
 
                 var list = new List<Dictionary<string, string>>();
                 var command = conn.CreateCommand();
-                command.CommandText = $"SELECT * FROM {table}";
+                command.CommandText = $"SELECT * FROM '{table}'";
 
 
 
@@ -175,6 +179,8 @@ namespace VeryQueryable
 
                 foreach (var item in querys)
                     command.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
+
+                Console.WriteLine(command.CommandText);
 
                 using (var reader = command.ExecuteReader())
                     while (reader.Read())
