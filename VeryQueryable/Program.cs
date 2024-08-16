@@ -122,13 +122,14 @@ namespace VeryQueryable
 
         public static string DoQuery(this HttpContext context, StaticPathEntity entity)
         {
-            return DoQuery(context, entity.Database, entity.Table, entity.RequiredQuerys, entity.AllowedQuerys,
-                entity.BannedResults, entity.BannedQuerys);
+            return DoQuery(context, entity.Database, entity.Table, entity.OnlyTakeFirst ?? false,
+                entity.RequiredQuerys, entity.AllowedQuerys,
+                entity.BannedResults, entity.BannedQuerys, entity.AllowedResults);
         }
 
-        public static string DoQuery(this HttpContext context, string db, string table,
+        public static string DoQuery(this HttpContext context, string db, string table, bool onlyTakeFirst = false,
             string[]? requiredQuerys = null, string[]? allowedQuerys = null, string[]? bannedResults = null,
-            string[]? bannedQuerys = null)
+            string[]? bannedQuerys = null, string[]? allowedResults = null)
         {
             try
             {
@@ -188,12 +189,23 @@ namespace VeryQueryable
                         list.Add(Enumerable.Range(0, reader.FieldCount).ToDictionary(i => reader.GetName(i),
                             i => reader.GetValue(i).ToString())!);
 
+                if (onlyTakeFirst && list.Count > 1) list = [list.First()!];
+
                 if (bannedResults != null && bannedResults.Length != 0)
                     foreach (var item in list)
                     {
                         foreach (var banned in bannedResults)
                         {
                             item.Remove(banned);
+                        }
+                    }
+
+                if (allowedResults != null && allowedResults.Length != 0)
+                    foreach (var item in list)
+                    {
+                        foreach (var key in item.Keys.Where(key => !allowedResults.Contains(key)))
+                        {
+                            item.Remove(key);
                         }
                     }
 
@@ -227,9 +239,12 @@ namespace VeryQueryable
         public string Database { get; set; }
         public string Table { get; set; }
         public string Path { get; set; }
+        public bool? OnlyTakeFirst { get; set; }
+
         public string[]? RequiredQuerys { get; set; }
         public string[]? AllowedQuerys { get; set; }
         public string[]? BannedQuerys { get; set; }
         public string[]? BannedResults { get; set; }
+        public string[]? AllowedResults { get; set; }
     }
 }
