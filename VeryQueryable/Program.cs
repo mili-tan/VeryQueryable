@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 #pragma warning disable ASP0019
 
@@ -9,7 +10,7 @@ namespace VeryQueryable
     {
         public static Dictionary<string, SqliteConnection> Databases = new();
         public static Dictionary<string, string> HeadersDictionary = new();
-        public static List<(string path, string db, string table)> StaticPaths = new();
+        public static List<StaticPathEntity> StaticPaths = new();
         public static List<string> DynamicPaths = new();
         public static bool AllowAnyQuery = true;
         public static bool AllowAnyCORS = true;
@@ -23,14 +24,13 @@ namespace VeryQueryable
             {
                 var config = builder.Configuration.GetSection("VeryQueryable");
                 if (!builder.Configuration.GetSection("VeryQueryable").Exists()) return;
-                
-                if (config.GetSection("DynamicPaths").Exists()) 
-                    foreach (var item in config.GetSection("DynamicPaths").Get<string[]>()!) DynamicPaths.Add(item);
+
+                if (config.GetSection("DynamicPaths").Exists())
+                    foreach (var item in config.GetSection("DynamicPaths").Get<string[]>()!)
+                        DynamicPaths.Add(item);
                 if (config.GetSection("StaticPaths").Exists())
                     foreach (var item in config.GetSection("StaticPaths").GetChildren())
-                        StaticPaths.Add(new ValueTuple<string, string, string>(item.GetValue<string>("Path")!,
-                            item.GetValue<string>("Database")!,
-                            item.GetValue<string>("Table")!));
+                        StaticPaths.Add(item.Get<StaticPathEntity>());
 
                 if (config.GetSection("Databases").Exists())
                     foreach (var item in config.GetSection("Databases").GetChildren())
@@ -66,7 +66,8 @@ namespace VeryQueryable
                         if (i.Contains(":"))
                         {
                             var split = i.Split(":");
-                            StaticPaths.Add(new ValueTuple<string, string, string>(split[0], split[1], split[2]));
+                            StaticPaths.Add(new StaticPathEntity()
+                                {Database = split[0], Table = split[1], Path = split[2]});
                         }
                         else DynamicPaths.Add(i);
                     }
@@ -97,8 +98,8 @@ namespace VeryQueryable
                 await next(context);
             });
 
-            foreach (var (path, db, table) in StaticPaths)
-                app.Map(path, (HttpContext context) => context.DoQuery(db, table));
+            foreach (var item in StaticPaths)
+                app.Map(item.Path, (HttpContext context) => context.DoQuery(item));
             foreach (var path in DynamicPaths)
             {
                 app.Map(path, (HttpContext context) =>
@@ -112,8 +113,15 @@ namespace VeryQueryable
             app.Run();
         }
 
+        public static string DoQuery(this HttpContext context, StaticPathEntity entity)
+        {
+            return DoQuery(context, entity.Database, entity.Table, entity.RequiredQuerys, entity.AllowedQuerys,
+                entity.BannedResults, entity.BannedQuerys);
+        }
+
         public static string DoQuery(this HttpContext context, string db, string table,
-            string[]? requiredQuerys = null, string[]? allowedQuerys = null, string[]? bannedResults = null, string[]? bannedQuerys = null)
+            string[]? requiredQuerys = null, string[]? allowedQuerys = null, string[]? bannedResults = null,
+            string[]? bannedQuerys = null)
         {
             try
             {
@@ -205,5 +213,16 @@ namespace VeryQueryable
         {
             return input.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
         }
+    }
+
+    public class StaticPathEntity
+    {
+        public string Database { get; set; }
+        public string Table { get; set; }
+        public string Path { get; set; }
+        public string[]? RequiredQuerys { get; set; }
+        public string[]? AllowedQuerys { get; set; }
+        public string[]? BannedQuerys { get; set; }
+        public string[]? BannedResults { get; set; }
     }
 }
