@@ -13,6 +13,7 @@ namespace VeryQueryable
         public static List<string> DynamicPaths = new();
         public static bool AllowAnyQuery = true;
         public static bool AllowAnyCORS = true;
+        public static bool AllowShowExceptionMessage = true;
 
         public static void Main(string[] args)
         {
@@ -43,6 +44,8 @@ namespace VeryQueryable
                     AllowAnyQuery = config.GetValue<bool>("AllowAnyQuery");
                 if (config.GetSection("AllowAnyCORS").Exists())
                     AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
+                if (config.GetSection("AllowShowExceptionMessage").Exists())
+                    AllowShowExceptionMessage = config.GetValue<bool>("AllowShowExceptionMessage");
 
                 if (config.GetSection("Herders").Exists())
                     foreach (var item in config.GetSection("Herders").GetChildren())
@@ -210,7 +213,7 @@ namespace VeryQueryable
                 return JsonSerializer.Serialize(new
                 {
                     error = 0,
-                    error_description = e.Message
+                    error_description = AllowShowExceptionMessage ? e.Message : "Internal database error"
                 });
             }
         }
