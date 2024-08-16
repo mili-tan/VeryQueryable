@@ -175,15 +175,13 @@ namespace VeryQueryable
                 var command = conn.CreateCommand();
                 command.CommandText = $"SELECT * FROM '{table}'";
 
-
-
                 var queryKeyList = querys.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
                 if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
 
                 foreach (var item in querys)
                     command.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
 
-                Console.WriteLine(command.CommandText);
+                //Console.WriteLine(command.CommandText);
 
                 using (var reader = command.ExecuteReader())
                     while (reader.Read())
