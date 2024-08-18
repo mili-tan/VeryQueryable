@@ -147,6 +147,15 @@ namespace VeryQueryable
                     }
                 }
 
+                if (entity.RequiredHerders != null && entity.RequiredHerders.Any() && entity.RequiredHerders.Any(x =>
+                        !context.Request.Headers.Keys.Contains(x.Key) ||
+                        context.Request.Headers[x.Key].ToString() != x.Value))
+                    return JsonSerializer.Serialize(new JsonObject()
+                    {
+                        {keys.Status, codes.InternalInvalid},
+                        {keys.Description, "Missing required request headers"}
+                    });
+
                 if (context.Request.Method.ToUpper() != "GET")
                     return JsonSerializer.Serialize(new JsonObject()
                     {
@@ -268,6 +277,7 @@ namespace VeryQueryable
 
         public KeyNameEntity? KeyNames { get; set; }
         public StatusCodesEntity? StatusCodes { get; set; }
+        public Dictionary<string, string>? RequiredHerders { get; set; }
         public string[]? RequiredQuerys { get; set; }
         public string[]? AllowedQuerys { get; set; }
         public string[]? BannedQuerys { get; set; }
