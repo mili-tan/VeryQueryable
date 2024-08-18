@@ -133,15 +133,18 @@ namespace VeryQueryable
 
             try
             {
-                if (querys.TryGetValue("limit", out var limitValue))
+                if (entity.Pageable ?? false)
                 {
-                    limit = int.Parse(limitValue);
-                    querys.Remove("limit");
-                }
-                if (querys.TryGetValue("offset", out var offsetValue))
-                {
-                    offset = int.Parse(offsetValue);
-                    querys.Remove("offset");
+                    if (querys.TryGetValue("limit", out var limitValue))
+                    {
+                        limit = int.Parse(limitValue);
+                        querys.Remove("limit");
+                    }
+                    if (querys.TryGetValue("offset", out var offsetValue))
+                    {
+                        offset = int.Parse(offsetValue);
+                        querys.Remove("offset");
+                    }
                 }
 
                 if (context.Request.Method.ToUpper() != "GET")
@@ -189,7 +192,7 @@ namespace VeryQueryable
 
                 var queryKeyList = querys.Keys.ToList().Select(x => $"{x} = ${x}").ToList();
                 if (queryKeyList.Any()) command.CommandText += " WHERE " + string.Join(" AND ", queryKeyList);
-                if (limit != 0)
+                if (limit != 0 && (entity.Pageable ?? false))
                     command.CommandText +=
                         $" LIMIT {((entity.Takes.HasValue && limit > entity.Takes.Value) ? entity.Takes.Value : limit)} OFFSET {offset}";
                 else if (entity.Takes.HasValue) command.CommandText += " LIMIT " + entity.Takes.Value;
@@ -261,6 +264,7 @@ namespace VeryQueryable
         public string Path { get; set; }
         public int? Takes { get; set; }
         public bool? NotArray { get; set; }
+        public bool? Pageable { get; set; }
 
         public KeyNameEntity? KeyNames { get; set; }
         public StatusCodesEntity? StatusCodes { get; set; }
