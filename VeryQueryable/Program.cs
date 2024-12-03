@@ -1,6 +1,8 @@
 using Microsoft.Data.Sqlite;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Kenzo;
+using System.Net;
 
 #pragma warning disable ASP0019
 
@@ -14,6 +16,7 @@ namespace VeryQueryable
         public static List<string> DynamicPaths = new();
         public static bool AllowAnyQuery = true;
         public static bool AllowAnyCORS = true;
+        public static bool ShowLog = false;
         public static bool AllowShowExceptionMessage = true;
 
         public static void Main(string[] args)
@@ -47,6 +50,8 @@ namespace VeryQueryable
                     AllowAnyCORS = config.GetValue<bool>("AllowAnyCORS");
                 if (config.GetSection("AllowShowExceptionMessage").Exists())
                     AllowShowExceptionMessage = config.GetValue<bool>("AllowShowExceptionMessage");
+                if (config.GetSection("ShowLog").Exists())
+                    ShowLog = config.GetValue<bool>("ShowLog");
 
                 if (config.GetSection("Herders").Exists())
                     foreach (var item in config.GetSection("Herders").GetChildren())
@@ -85,6 +90,8 @@ namespace VeryQueryable
             app.UseAuthorization();
             app.Use(async (context, next) =>
             {
+                context.Connection.RemoteIpAddress = RealIP.Get(context);
+
                 if (AllowAnyCORS)
                 {
                     context.Response.Headers.Add("Access-Control-Allow-Origin", "*");
@@ -97,6 +104,10 @@ namespace VeryQueryable
 
                 foreach (var item in HeadersDictionary)
                     context.Response.Headers.TryAdd(item.Key, item.Value);
+
+                if (ShowLog)
+                    Console.WriteLine(
+                        $"{context.Connection.RemoteIpAddress}|{context.Request.Headers.UserAgent}:{WebUtility.UrlDecode(context.Request.QueryString.ToString())}");
 
                 await next(context);
             });
