@@ -273,7 +273,7 @@ namespace VeryQueryable
 
         static bool IsValidInput(string input)
         {
-            return input.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_');
+            return input.All(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == ' ');
         }
     }
 
