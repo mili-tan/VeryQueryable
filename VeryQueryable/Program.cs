@@ -201,10 +201,11 @@ namespace VeryQueryable
                             {
                                 querys.Add(sp[1], reader.GetValue(0).ToString());
                                 isEmpty = false;
-                                querys.Remove(q);
                             }
 
-                        if (isEmpty)
+                        querys.Remove(q);
+
+                        if (isEmpty && entity.RequiredQuerys != null && entity.RequiredQuerys.Contains(q))
                         {
                             return JsonSerializer.Serialize(new JsonObject()
                             {
