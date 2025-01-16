@@ -179,6 +179,31 @@ namespace VeryQueryable
                         {keys.Status, codes.InternalInvalid},
                         {keys.Description, "Database not found"}
                     });
+
+                if (entity.CrossReplaceKeys != null && entity.CrossReplaceKeys.Any())
+                {
+                    foreach (var q in querys.Keys.ToList())
+                    {
+                        if (!entity.CrossReplaceKeys.TryGetValue(q, out var val)) continue;
+                        var sp = val.Split(":");
+                        var cmd = conn.CreateCommand();
+                        cmd.CommandText = $"SELECT {sp[1]} FROM '{sp[0]}'";
+                        cmd.CommandText += " WHERE " + string.Join(" AND ", querys.Keys.ToList().Select(x => $"{x} = ${x}").ToList());
+                        cmd.CommandText += " LIMIT 1";
+
+                        foreach (var item in querys)
+                            cmd.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
+
+                        //Console.WriteLine(cmd.CommandText);
+
+                        using (var reader = cmd.ExecuteReader())
+                            while (reader.Read())
+                                querys.Add(sp[1], reader.GetValue(0).ToString());
+
+                        querys.Remove(q);
+                    }
+                }
+
                 if (entity.RequiredQuerys != null && entity.RequiredQuerys.Any(i => !querys.Keys.Contains(i)))
                     return JsonSerializer.Serialize(new JsonObject()
                     {
@@ -285,6 +310,8 @@ namespace VeryQueryable
         public int? Takes { get; set; }
         public bool? NotArray { get; set; }
         public bool? Pageable { get; set; }
+
+        public Dictionary<string, string>? CrossReplaceKeys { get; set; }
 
         public KeyNameEntity? KeyNames { get; set; }
         public StatusCodesEntity? StatusCodes { get; set; }
