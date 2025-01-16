@@ -195,12 +195,29 @@ namespace VeryQueryable
                             cmd.Parameters.AddWithValue($"${item.Key}", item.Value.ToString());
 
                         //Console.WriteLine(cmd.CommandText);
-
+                        var isEmpty = true;
                         using (var reader = cmd.ExecuteReader())
                             while (reader.Read())
+                            {
                                 querys.Add(sp[1], reader.GetValue(0).ToString());
+                                isEmpty = false;
+                                querys.Remove(q);
+                            }
 
-                        querys.Remove(q);
+                        if (isEmpty)
+                        {
+                            return JsonSerializer.Serialize(new JsonObject()
+                            {
+                                {keys.Status, codes.OK},
+                                {keys.Description, "OK, but the cross-replace query is empty. No results query."},
+                                {keys.Count,0},
+                                {
+                                    keys.Result,
+                                    (entity.NotArray ?? false) ? null
+                                        : new JsonArray()
+                                }
+                            });
+                        }
                     }
                 }
 
