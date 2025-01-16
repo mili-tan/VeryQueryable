@@ -208,7 +208,11 @@ namespace VeryQueryable
                     return JsonSerializer.Serialize(new JsonObject()
                     {
                         {keys.Status, codes.InputInvalid},
-                        {keys.Description, "Required query is missing"}
+                        {
+                            keys.Description,
+                            "Required query is missing: " + string.Join(" ",
+                                entity.RequiredQuerys.Where(i => !querys.Keys.Contains(i)))
+                        }
                     });
                 if (entity.BannedQuerys != null && entity.BannedQuerys.Length != 0)
                     foreach (var item in querys.Where(item => entity.BannedQuerys.Contains(item.Key)))
