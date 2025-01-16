@@ -205,7 +205,7 @@ namespace VeryQueryable
 
                         querys.Remove(q);
 
-                        if (isEmpty && entity.RequiredQuerys != null && entity.RequiredQuerys.Contains(q))
+                        if (isEmpty && entity.RequiredQuerys != null && entity.RequiredQuerys.Contains(sp[1]))
                         {
                             return JsonSerializer.Serialize(new JsonObject()
                             {
